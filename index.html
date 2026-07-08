@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PALM incident report — email builder</title>
+<style>
+  :root{
+    --bg:#F6F7F5; --surface:#FFFFFF; --border:#DEE1DC; --border-strong:#C6CBC3;
+    --ink:#1B2B2A; --muted:#5C6B69; --hint:#8B9895;
+    --accent:#2B6777; --accent-dark:#1D4750; --accent-bg:#E4EEF0;
+    --danger:#B94A3D; --danger-bg:#FBEBE8;
+    --warning:#B9822A; --warning-bg:#FBF1E1;
+    --success:#3F7D5C; --success-bg:#E8F2EC;
+    --radius:10px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#161D1C; --surface:#1E2726; --border:#324140; --border-strong:#425352;
+      --ink:#EAF0EE; --muted:#A9B7B4; --hint:#7E8C89;
+      --accent:#6FB3C4; --accent-dark:#8FCAD8; --accent-bg:#22383D;
+      --danger:#E28277; --danger-bg:#3A2521;
+      --warning:#E0AC55; --warning-bg:#3A2E18;
+      --success:#7FC29E; --success-bg:#1E332A;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;line-height:1.5;}
+  .wrap{max-width:820px;margin:0 auto;padding:28px 20px 60px;}
+  .eyebrow{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:0 0 4px;}
+  h1{font-size:22px;font-weight:600;margin:0 0 2px;}
+  .sub{font-size:13px;color:var(--muted);margin:0 0 22px;}
+  label{font-size:12px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;}
+  select,input,textarea{font:inherit;padding:9px 11px;border-radius:8px;border:1px solid var(--border-strong);background:var(--surface);color:var(--ink);width:100%;}
+  .field{margin-bottom:14px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-bottom:20px;}
+  button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--border-strong);background:var(--surface);color:var(--ink);padding:9px 16px;font-size:13px;}
+  button:hover{background:var(--accent-bg);}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;}
+  button.primary:hover{background:var(--accent-dark);}
+  .note{font-size:12px;color:var(--muted);margin:8px 0 0;padding:10px 12px;border-radius:8px;background:var(--accent-bg);}
+  .note.critical{background:var(--danger-bg);color:var(--danger);}
+  .note.other{background:var(--warning-bg);color:var(--warning);}
+  .output-wrap{position:relative;}
+  #output{min-height:420px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;white-space:pre-wrap;resize:vertical;}
+  .output-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:10px;}
+  .hidden{display:none;}
+  .copied{color:var(--success);font-size:12px;font-weight:600;align-self:center;}
+  .worker-card{border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px;background:var(--bg);}
+  .worker-card-grid{display:grid;grid-template-columns:2fr 1fr;gap:8px;margin-bottom:8px;}
+  .worker-card-grid2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+  .worker-card input,.worker-card select{margin:0;}
+  .worker-card-actions{display:flex;justify-content:flex-end;margin-top:8px;}
+  .remove-worker{padding:6px 10px;color:var(--danger);border-color:var(--border-strong);font-size:12px;}
+  .remove-worker:hover{background:var(--danger-bg);}
+  .q-field{margin-bottom:12px;}
+  .q-field label{color:var(--ink);font-weight:400;font-size:13px;margin-bottom:5px;}
+  .q-field label .q-num{color:var(--accent-dark);font-weight:700;margin-right:4px;}
+  .missing-field{border-color:var(--danger) !important;background:var(--danger-bg) !important;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Agri Labour Australia — for Welfare Officers</p>
+  <h1>PALM incident report builder</h1>
+  <p class="sub">Pick what happened and this fills in every question DEWR needs for that incident type — answer them here, then send it straight to Compliance. One email, no back-and-forth.</p>
+
+  <div class="panel">
+    <label>Workers involved</label>
+    <div id="worker-rows"></div>
+    <button id="btn-add-worker" type="button" style="margin-top:4px;">+ Add another worker</button>
+
+    <div class="row2" style="margin-top:16px;">
+      <div class="field"><label>Sending country</label><input id="f-country" placeholder="e.g. Fiji"></div>
+      <div class="field"><label>Client / host organisation</label><input id="f-client" placeholder="e.g. Gazzola Farms"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Your name (Welfare Officer)</label><input id="f-wo" placeholder="e.g. Elia Tuqiri"></div>
+      <div class="field">
+        <label>Date &amp; time you became aware</label>
+        <div style="display:flex;gap:8px;">
+          <input type="datetime-local" id="f-aware" style="flex:1;">
+          <button type="button" id="btn-now" style="flex-shrink:0;">Now</button>
+        </div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Incident type</label>
+      <select id="f-situation">
+        <option value="">— Select the situation —</option>
+        <optgroup label="Critical incident — 24 hours"></optgroup>
+      </select>
+    </div>
+    <p id="situation-note" class="note hidden"></p>
+    <div class="field">
+      <label>What happened? (in your own words — this becomes the case narrative) <span style="color:var(--danger);">*</span></label>
+      <textarea id="f-narrative" rows="4" placeholder="Briefly describe what happened, in your own words. Compliance will refine this before it goes to DEWR."></textarea>
+    </div>
+    <div id="dynamic-questions" class="hidden" style="margin-top:16px;"></div>
+    <div id="validation-msg" class="hidden" style="color:var(--danger);background:var(--danger-bg);border-radius:8px;padding:10px 12px;font-size:13px;margin-top:10px;"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:14px;">
+      <button class="primary" id="btn-generate">Generate email</button>
+    </div>
+  </div>
+
+  <div class="panel hidden" id="output-panel">
+    <label>Editable email — fill in the blanks, then copy into Outlook</label>
+    <div class="output-wrap">
+      <div id="output" contenteditable="true" style="min-height:420px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;white-space:pre-wrap;border:1px solid var(--border-strong);border-radius:8px;padding:12px 14px;background:var(--surface);color:var(--ink);overflow-y:auto;"></div>
+    </div>
+    <div class="output-actions">
+      <span class="copied hidden" id="copied-msg">Copied</span>
+      <button id="btn-copy">Copy email</button>
+    </div>
+  </div>
+
+  <p style="font-size:11px;color:var(--hint);line-height:1.6;">
+    This builds a draft only — it doesn't submit anything to PALMIS or send any email itself. Compliance will still review
+    before anything goes to DEWR. Situations and required fields are based on the December 2024 DEWR "Incident reporting
+    guidance for PALM scheme employers" — always double-check the current guidelines version with Compliance if unsure.
+  </p>
+</div>
+
+<script>
+const SITUATIONS = [
+  {group:'Critical incident — report within 24 hours (call 1800 51 51 31, then submit via PALMIS)', items:[
+    {key:'crit-death', label:'Death of a worker', type:'Critical', questions:[
+      'Welfare and wellbeing support provided to other workers and anyone present at the time',
+      'Have the participating country and family (particularly next of kin) been notified? When?',
+      'Have relevant bodies been notified (WHS regulator, health insurance provider, super provider)?',
+      'Superannuation documentation and details of any death benefit',
+      'Health insurance documentation — does it include repatriation cover?',
+      'How long had the worker been in Australia, and how many times have they come to Australia?'
+    ]},
+    {key:'crit-injury', label:'Serious or significant accident, injury or illness of a worker', type:'Critical', questions:[
+      'Support being provided to the worker',
+      'Does the worker require time off work? If so, how long?',
+      'Did the injury/illness occur in the workplace? If so, has a worker\'s compensation claim been filed and the regulator notified?',
+      'Has the worker attended a medical appointment? Any follow-up appointments planned?',
+      'Will the worker\'s health insurance cover medical expenses? If not, how will charges be paid?',
+      'Have any other PALM scheme workers been impacted?',
+      'If off work for a significant time and pay/deductions affected — how will you assist the worker to recoup losses?'
+    ]},
+    {key:'crit-otherperson', label:'Serious/significant accident, injury, illness or death of another employee or member of the public on site', type:'Critical', questions:[
+      'Welfare and wellbeing support provided to PALM scheme workers and others present at the time',
+      'Have relevant bodies been notified (WHS regulator, health insurer, super provider)?',
+      'If notified, provide report details and reference number'
+    ]},
+    {key:'crit-industrial', label:'Significant industrial action — community-wide, large-scale or service-wide', type:'Critical', questions:[
+      'Support being offered to affected workers',
+      'What pay will workers receive during the action?',
+      'Expected duration of the industrial action',
+      'Any implications for workers as a result of participating'
+    ]},
+    {key:'crit-disciplinary', label:'Worker arrested/charged with an offence, victim of a crime, evacuated or evicted from accommodation, or another incident that could bring disrepute', type:'Critical', questions:[
+      'Support being provided to the worker to resolve the issue',
+      'Have any other workers been impacted?',
+      'Were police or emergency services involved? If charged, does the worker understand bail conditions/court summons?',
+      'Has the worker received an informal or formal warning? Attach documentation if so, and confirm they understood the consequences',
+      'What behavioural education has been provided?',
+      'What disciplinary process is underway (if any)?',
+      'Does the worker have alternative accommodation arranged? Where?'
+    ]},
+    {key:'crit-altercation', label:'Worker involved in an altercation', type:'Critical', questions:[
+      'Confirmation of the safety of everyone involved, including the alleged offender',
+      'Has the alleged offender been removed from the worksite/accommodation?',
+      'Did emergency or law enforcement services attend? Was medical treatment provided?',
+      'Do those involved require time off work? How will pay/deductions be affected, and how will losses be recouped?',
+      'Have informal or written warnings been issued? Attach documentation',
+      'Confirm the worker(s) understood the warning and consequences',
+      'What behavioural education/advice has been provided to prevent repeat?'
+    ]}
+  ]},
+  {group:'Other incident — report within 3 business days (via PALMIS)', items:[
+    {key:'oth-hospital', label:'Worker admitted to hospital', type:'Other', questions:[
+      'Support being provided to the worker',
+      'Does the worker require time off work? If so, how long?',
+      'Did this occur in the workplace? If so, has a worker\'s compensation claim been filed and the regulator notified?',
+      'Has the worker attended a medical appointment? Any follow-up appointments/hospital visits planned?',
+      'Will health insurance cover medical expenses? If not, how will charges be paid?',
+      'Have any other workers been impacted?'
+    ]},
+    {key:'oth-whs', label:'WHS-reportable injury/illness resulting in more than 3 calendar days off work', type:'Other', questions:[
+      'Support being provided to the worker',
+      'Length of time off work',
+      'Did this occur in the workplace? Worker\'s compensation claim filed and regulator notified?',
+      'Has the worker attended a medical appointment?',
+      'Will health insurance cover expenses?',
+      'Has the worker received appropriate clearance to return to work?',
+      'Have any other workers been impacted?'
+    ]},
+    {key:'oth-behavioural', label:'Behavioural issue requiring formal WHS-linked reporting', type:'Other', questions:[
+      'Support being provided to the worker to resolve the issue',
+      'Any prior or ongoing concerns for this worker?',
+      'Have any other workers been impacted?',
+      'Has the worker received an informal or formal warning? Attach documentation',
+      'What education on acceptable behaviour has been provided?',
+      'Has a third party been engaged to support the worker (e.g. country liaison officer)?',
+      'Confirm the worker understood the warning and consequences'
+    ]},
+    {key:'oth-performance', label:'Performance issue requiring formal reporting', type:'Other', questions:[
+      'Education/training provided to the worker to prevent recurrence',
+      'Has the worker had performance issues previously?',
+      'Has an informal or formal warning been issued? Attach documentation and confirm understanding',
+      'Next steps regarding the worker\'s employment',
+      'Any third parties engaged to help address the issue?'
+    ]},
+    {key:'oth-leave', label:'Personal/unpaid leave agreed between worker and employer', type:'Other', questions:[
+      'Does the worker understand the agreement?',
+      'How long will the worker be on leave?',
+      'Does the worker have sufficient funds to support themselves during leave?',
+      'Will the worker continue paying for transport/accommodation while on leave?',
+      'What welfare and wellbeing support will be provided during leave?'
+    ]},
+    {key:'oth-returnedhome', label:'Worker temporarily returned home', type:'Other', questions:[
+      'Repatriation details provided, including return airfares',
+      'How will contact be maintained with the worker?',
+      'What is the worker\'s confirmed return date?'
+    ]}
+  ]},
+  {group:'Non-critical incident — report by 5:00pm AEST the next business day (via PALMIS)', items:[
+    {key:'nc-abandon', label:'Worker breached visa conditions / possible abandonment', type:'Non-critical', questions:[
+      'Contract type (short-term or long-term)',
+      'How long was the worker in-country before the suspected abandonment?',
+      'Host organisation state/territory location',
+      'Worker\'s last known contact details (mobile and email)',
+      'Why do you believe the worker may have abandoned their placement?',
+      'Were there previous concerns or incidents raised about this worker?',
+      'Has Department of Home Affairs (ImmiAccount) been notified, and the sending unit/country liaison officer? On what date?',
+      'Have you attempted to contact the worker about returning?',
+      'Have other workers been asked if they know the worker\'s whereabouts?',
+      'Date you intend to cease health insurance payment (minimum 28 days\' cover required)'
+    ]},
+    {key:'nc-protectionvisa', label:'Worker has applied for a protection visa', type:'Non-critical', questions:[
+      'Any details known about why the worker applied for a protection visa',
+      'Is the worker still working/employed by you?',
+      'Are you aware of the worker\'s current location and employment status?',
+      'Has Home Affairs, the sending unit or country liaison officer been notified?',
+      'Have any other workers been impacted?'
+    ]},
+    {key:'nc-visachange', label:'Change to a worker\'s visa (e.g. due to marriage)', type:'Non-critical', questions:[
+      'Is the worker still participating at work?',
+      'Any concerns about the worker\'s ongoing participation?',
+      'Is the worker still residing in approved accommodation? If so, accommodation plan number',
+      'Has a welfare meeting been held to understand the worker\'s situation and intentions?',
+      'Has Home Affairs, the sending unit or country liaison officer been notified?'
+    ]},
+    {key:'nc-terminate', label:'Intending to terminate, or have terminated, a worker\'s employment', type:'Non-critical', questions:[
+      'Reason for early termination',
+      'Support provided to the worker',
+      'Date of termination',
+      'Last day the worker will reside at employer-arranged accommodation',
+      'How is the worker coping, and are they agreeable to repatriation?',
+      'If unable to return home, what support is being provided?',
+      'Arrangements made for the worker\'s return to their home country',
+      'Summary of events leading to the termination decision',
+      'Steps taken to mitigate the termination',
+      'Confirm the decision complies with the Fair Work Act and applicable Fair Work Instrument',
+      'Has Home Affairs (ImmiAccount), the sending unit and country liaison officer been notified?',
+      'A contact number for the worker in case DEWR makes a welfare call',
+      'Has a departure report / end-of-employment notification been submitted (or will be)?',
+      'Date you intend to cease health insurance payment (minimum 28 days\' cover required)'
+    ]},
+    {key:'nc-resign', label:'Worker resigns, or advises intent to resign', type:'Non-critical', questions:[
+      'Reason given for the resignation',
+      'Did the worker give notice in line with the Fair Work Act and their offer of employment?',
+      'Has Home Affairs (ImmiAccount), the sending unit and country liaison officer been notified?',
+      'Repatriation arrangements made',
+      'Has a departure report / end-of-employment notification been submitted (or will be)?',
+      'Date you intend to cease health insurance payment (minimum 28 days\' cover required)'
+    ]},
+    {key:'nc-earlydeparture', label:'Early departure at the worker\'s own request', type:'Non-critical', questions:[
+      'Reason given for early departure',
+      'Repatriation arrangements made',
+      'Has a departure report / end-of-employment notification been submitted (or will be)?',
+      'Has Home Affairs (ImmiAccount) been notified?',
+      'Does the worker have any outstanding debt?',
+      'Date you intend to cease health insurance payment (minimum 28 days\' cover required)'
+    ]},
+    {key:'nc-repatriation', label:'Worker interested in repatriation', type:'Non-critical', questions:[
+      'Has a demobilisation checklist and worker repatriation factsheet been provided?',
+      'Has Home Affairs and any other relevant stakeholders been notified?',
+      'Has a departure report been submitted via the approved employer portal?'
+    ]},
+    {key:'nc-payreduction', label:'Unable to pay, or fully pay, a worker — reduction in pay rate', type:'Non-critical', questions:[
+      'Has the reason for the proposed reduction been discussed and explained to the worker?',
+      'Has a change request been submitted via the approved employer portal?',
+      'Does the reduced pay still meet minimum hour requirements under the deed and guidelines?',
+      'Does it meet minimum pay requirements under the applicable Fair Work Instrument and the Fair Work Act?'
+    ]},
+    {key:'nc-lowwork', label:'Not meeting minimum hours obligations — low work', type:'Non-critical', questions:[
+      'Support being provided to affected workers',
+      'How long has low work been occurring?',
+      'What circumstances led to low work being available?',
+      'Will the contingency plan be enacted?',
+      'What payment will workers receive during this period?',
+      'Confirm deductions will be paused during low work',
+      'Confirm workers have sufficient funds to meet living expenses',
+      '(Short-term workers) Will you meet the obligation of 30 hours/week over a 4-week period?'
+    ]},
+    {key:'nc-disaster', label:'Natural disaster or force majeure event impacting recruitment', type:'Non-critical', questions:[
+      'Nature of the natural disaster/event',
+      'Support being provided (supplies, safety, ongoing contact)',
+      'Will workers be off work? For how long?',
+      'Do workers need to move from their accommodation?',
+      'Steps being taken to keep workers safe and informed',
+      'Will the contingency plan be enacted?',
+      '(Short-term workers) Will the 30 hours/week over 4 weeks obligation still be met?'
+    ]},
+    {key:'nc-police', label:'Police attendance at work/accommodation re a criminal investigation', type:'Non-critical', questions:[
+      'Nature of the criminal investigation',
+      'Who is alleged to be involved in criminal activity',
+      'Support offered to affected workers'
+    ]},
+    {key:'nc-welfare', label:'Concerns about a worker\'s wellbeing or welfare', type:'Non-critical', questions:[
+      'Are you able to continue offering the worker employment?',
+      'Can the worker remain in their current accommodation? If not, where will they stay while awaiting repatriation?',
+      'Rescheduled date for their repatriation flight (if applicable)',
+      'How will contact be maintained with the worker in the meantime?'
+    ]},
+    {key:'nc-dispute', label:'Serious workplace dispute or exploitation allegation', type:'Non-critical', questions:[
+      'Who raised the grievance, and on what date?',
+      'Nature of the grievance / concerns raised',
+      'Steps taken to resolve it (Fair Work Ombudsman, union, country liaison officer, welfare officer, community group, etc.)',
+      'Any follow-up actions required?',
+      'Who is managing the grievance?',
+      'If resolved/closed — when, why, and how was this communicated to the worker (or their advocate)?'
+    ]},
+    {key:'nc-lawbreach', label:'Suspected breach of Australian law, including workplace laws', type:'Non-critical', questions:[
+      'Summary of the nature of the alleged breach',
+      'Date you became aware of the suspected breach',
+      'Does the breach relate to obligations under the deed or guidelines (e.g. worker welfare, pay/deductions)?',
+      'Action being taken to remedy the breach, and expected timeframe'
+    ]},
+    {key:'nc-misleading', label:'Misleading or deceptive conduct towards DEWR or another agency', type:'Non-critical', questions:[
+      'Summary of the nature of the conduct',
+      'Date you became aware',
+      'Action being taken to remedy it'
+    ]},
+    {key:'nc-inaccurate', label:'Report/record provided to DEWR that isn\'t true, complete or accurate', type:'Non-critical', questions:[
+      'Summary of the report/record/material in question',
+      'Date you became aware of the issue',
+      'Action being taken to remedy it'
+    ]},
+    {key:'nc-deedbreach', label:'Breach of the deed or guidelines, for any reason', type:'Non-critical', questions:[
+      'Which provision(s) of the deed/guidelines are breached?',
+      'Date you became aware of the breach',
+      'How did the breach occur?',
+      'What implications have resulted?',
+      'Action taken to remedy the breach / avoid future breaches, and timeframe'
+    ]},
+    {key:'nc-licence', label:'Labour hire licence cancelled, suspended or changed', type:'Non-critical', questions:[
+      'Summary of why the licence was cancelled/suspended/changed',
+      'Date you became aware',
+      'If changed — implications for PALM scheme workers'
+    ]},
+    {key:'nc-accreditation', label:'Industry accreditation cancelled, suspended or changed', type:'Non-critical', questions:[
+      'Summary of why the accreditation was cancelled/suspended/changed',
+      'Date you became aware',
+      'If changed — implications for PALM scheme workers'
+    ]},
+    {key:'nc-hostbreach', label:'Host organisation has breached its arrangement with you', type:'Non-critical', questions:[
+      'Summary of the nature of the breach',
+      'Date you became aware',
+      'Actions being undertaken by you and the host organisation to remedy it',
+      'Implications for PALM scheme workers'
+    ]}
+  ]}
+];
+
+let workerCount = 0;
+
+document.getElementById('btn-now').addEventListener('click', ()=>{
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  document.getElementById('f-aware').value = now.toISOString().slice(0,16);
+});
+
+function addWorkerRow(){
+  workerCount++;
+  const id = 'w' + workerCount;
+  const div = document.createElement('div');
+  div.className = 'worker-card';
+  div.dataset.id = id;
+  div.innerHTML = `
+    <div class="worker-card-grid">
+      <input type="text" placeholder="Worker name" class="w-name">
+      <select class="w-program">
+        <option value="">Program</option>
+        <option value="Long-term">Long-term</option>
+        <option value="Short-term">Short-term</option>
+      </select>
+    </div>
+    <div class="worker-card-grid2">
+      <select class="w-gender">
+        <option value="">Gender</option>
+        <option value="Male">Male</option>
+        <option value="Female">Female</option>
+        <option value="Other">Other</option>
+        <option value="Prefer not to say">Prefer not to say</option>
+      </select>
+      <input type="tel" placeholder="Phone number" class="w-phone">
+      <input type="date" placeholder="Date of birth" class="w-dob" title="Date of birth">
+    </div>
+    <div class="worker-card-actions">
+      <button type="button" class="remove-worker">Remove worker</button>
+    </div>
+  `;
+  document.getElementById('worker-rows').appendChild(div);
+  div.querySelector('.remove-worker').addEventListener('click', ()=>{
+    if(document.querySelectorAll('.worker-card').length <= 1) return;
+    div.remove();
+  });
+}
+document.getElementById('btn-add-worker').addEventListener('click', addWorkerRow);
+addWorkerRow();
+
+function getWorkers(){
+  return Array.from(document.querySelectorAll('.worker-card')).map(row=>{
+    const name = row.querySelector('.w-name').value.trim();
+    const program = row.querySelector('.w-program').value;
+    const gender = row.querySelector('.w-gender').value;
+    const phone = row.querySelector('.w-phone').value.trim();
+    const dob = row.querySelector('.w-dob').value;
+    return {name, program, gender, phone, dob};
+  }).filter(w=>w.name || w.program || w.gender || w.phone || w.dob);
+}
+
+function fmtDob(iso){
+  if(!iso) return '[DOB not provided]';
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString('en-AU', {day:'2-digit', month:'2-digit', year:'numeric'});
+}
+
+const situationSelect = document.getElementById('f-situation');
+situationSelect.innerHTML = '<option value="">— Select the situation —</option>' +
+  SITUATIONS.map(g => `<optgroup label="${g.group}">${g.items.map(i=>`<option value="${i.key}">${i.label}</option>`).join('')}</optgroup>`).join('');
+
+function findSituation(key){
+  for(const g of SITUATIONS){
+    const found = g.items.find(i=>i.key===key);
+    if(found) return found;
+  }
+  return null;
+}
+
+function fmtDeadlineNote(type){
+  if(type==='Critical') return {cls:'critical', text:'CRITICAL INCIDENT — must be phoned through to the 24/7 PALM scheme support line (1800 51 51 31) and submitted via PALMIS within 24 hours of becoming aware.'};
+  if(type==='Other') return {cls:'other', text:'OTHER INCIDENT — must be reported via PALMIS within 3 business days of becoming aware.'};
+  return {cls:'', text:'NON-CRITICAL INCIDENT — must be reported via PALMIS by 5:00pm AEST the next business day after becoming aware.'};
+}
+
+situationSelect.addEventListener('change', e=>{
+  const s = findSituation(e.target.value);
+  const note = document.getElementById('situation-note');
+  const qContainer = document.getElementById('dynamic-questions');
+  if(!s){
+    note.classList.add('hidden');
+    qContainer.classList.add('hidden');
+    qContainer.innerHTML = '';
+    return;
+  }
+  const d = fmtDeadlineNote(s.type);
+  note.className = 'note ' + d.cls;
+  note.textContent = d.text;
+
+  qContainer.innerHTML = '<label style="display:block;margin-bottom:8px;">DEWR needs these answered for this incident type — all required <span style="color:var(--danger);">*</span></label>' +
+    s.questions.map((q,i)=>`
+      <div class="q-field">
+        <label><span class="q-num">${i+1}.</span>${q} <span style="color:var(--danger);">*</span></label>
+        <textarea class="q-answer" data-idx="${i}" rows="2" placeholder="Type the answer here..."></textarea>
+      </div>
+    `).join('');
+  qContainer.classList.remove('hidden');
+  qContainer.querySelectorAll('.q-answer').forEach(el=>{
+    el.addEventListener('input', ()=>el.classList.remove('missing-field'));
+  });
+});
+document.getElementById('f-narrative').addEventListener('input', e=>e.target.classList.remove('missing-field'));
+
+function fmtDate(iso){
+  if(!iso) return '[date/time not provided]';
+  const d = new Date(iso);
+  return d.toLocaleString('en-AU', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:false}) + ' AEST';
+}
+
+function showValidationMsg(msg){
+  const el = document.getElementById('validation-msg');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  el.scrollIntoView({behavior:'smooth', block:'center'});
+}
+function hideValidationMsg(){
+  document.getElementById('validation-msg').classList.add('hidden');
+}
+
+document.getElementById('btn-generate').addEventListener('click', ()=>{
+  const s = findSituation(situationSelect.value);
+  if(!s){ showValidationMsg('Please select what happened first.'); return; }
+  const workers = getWorkers();
+  if(workers.length === 0){ showValidationMsg('Please add at least one worker\'s details before generating.'); return; }
+
+  const narrativeField = document.getElementById('f-narrative');
+  const narrativeEmpty = !narrativeField.value.trim();
+  narrativeField.classList.toggle('missing-field', narrativeEmpty);
+
+  const answerFields = document.querySelectorAll('.q-answer');
+  let firstMissing = null;
+  let missingCount = 0;
+  answerFields.forEach(field=>{
+    const empty = !field.value.trim();
+    field.classList.toggle('missing-field', empty);
+    if(empty){ missingCount++; if(!firstMissing) firstMissing = field; }
+  });
+
+  if(narrativeEmpty || missingCount > 0){
+    const parts = [];
+    if(narrativeEmpty) parts.push('the "What happened?" narrative');
+    if(missingCount > 0) parts.push(`${missingCount} question${missingCount>1?'s':''} below`);
+    showValidationMsg(`Please answer ${parts.join(' and ')} before generating the email.`);
+    (narrativeEmpty ? narrativeField : firstMissing).scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
+  hideValidationMsg();
+
+  const country = document.getElementById('f-country').value.trim() || '[sending country]';
+  const client = document.getElementById('f-client').value.trim() || '[client/host organisation]';
+  const wo = document.getElementById('f-wo').value.trim() || '[your name]';
+  const aware = fmtDate(document.getElementById('f-aware').value);
+  const narrative = document.getElementById('f-narrative').value.trim() || '[describe what happened]';
+  const deadline = fmtDeadlineNote(s.type).text;
+
+  const workerNamesForSubject = workers.map(w=>w.name || '[worker name]').join(', ');
+  const multipleWorkers = workers.length > 1;
+  const subject = `PALM incident — ${s.type} — ${workerNamesForSubject} — ${s.label}`;
+
+  function esc(str){
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  // Build both a plain-text version (for the text/plain clipboard type) and an HTML version (for text/html + on-screen display)
+  const plainLines = [];
+  const htmlLines = [];
+
+  plainLines.push(`Subject: ${subject}`); htmlLines.push(`<strong>Subject:</strong> ${esc(subject)}`);
+  plainLines.push(''); htmlLines.push('');
+  plainLines.push('Hi Compliance team,'); htmlLines.push('Hi Compliance team,');
+  plainLines.push(''); htmlLines.push('');
+  const introLine = `Reporting a ${s.type.toLowerCase()} incident — ${s.label.toLowerCase()}${multipleWorkers ? ` (${workers.length} workers involved)` : ''}.`;
+  plainLines.push(introLine); htmlLines.push(esc(introLine));
+  plainLines.push(''); htmlLines.push('');
+
+  const workerHeader = multipleWorkers ? 'Workers involved:' : 'Worker:';
+  plainLines.push(workerHeader); htmlLines.push(workerHeader);
+  workers.forEach(w=>{
+    const nameLine = `  -${w.name || '[worker name]'}${w.program ? ` (${w.program})` : ''}`;
+    plainLines.push(nameLine); htmlLines.push(esc(nameLine));
+    plainLines.push(`  -DOB: ${fmtDob(w.dob)}`); htmlLines.push(esc(`  -DOB: ${fmtDob(w.dob)}`));
+    if(w.gender){ plainLines.push(`  -Gender: ${w.gender}`); htmlLines.push(esc(`  -Gender: ${w.gender}`)); }
+    if(w.phone){ plainLines.push(`  -Phone: ${w.phone}`); htmlLines.push(esc(`  -Phone: ${w.phone}`)); }
+  });
+  plainLines.push(''); htmlLines.push('');
+
+  [`Sending country: ${country}`, `Client / host organisation: ${client}`, `Reported by (Welfare Officer): ${wo}`, `Date/time became aware: ${aware}`].forEach(l=>{
+    plainLines.push(l); htmlLines.push(esc(l));
+  });
+  plainLines.push(''); htmlLines.push('');
+
+  plainLines.push(`[${deadline}]`);
+  htmlLines.push(`<span style="color:#c0392b;font-style:italic;">[${esc(deadline)}]</span>`);
+  plainLines.push(''); htmlLines.push('');
+
+  plainLines.push('What happened:'); htmlLines.push('What happened:');
+  plainLines.push(narrative); htmlLines.push(esc(narrative));
+  plainLines.push(''); htmlLines.push('');
+
+  plainLines.push('Details below — answers needed for the PALMIS submission:');
+  htmlLines.push('Details below — answers needed for the PALMIS submission:');
+  plainLines.push(''); htmlLines.push('');
+
+  s.questions.forEach((q,i)=>{
+    const typed = answerFields[i] ? answerFields[i].value.trim() : '';
+    plainLines.push(`${i+1}. ${q}`); htmlLines.push(esc(`${i+1}. ${q}`));
+    plainLines.push(`   Answer: ${typed || '[not yet answered]'}`);
+    htmlLines.push(esc(`   Answer: ${typed || '[not yet answered]'}`));
+    plainLines.push(''); htmlLines.push('');
+  });
+
+  plainLines.push('Thanks,'); htmlLines.push('Thanks,');
+  plainLines.push(wo); htmlLines.push(esc(wo));
+
+  const outputEl = document.getElementById('output');
+  outputEl.innerHTML = htmlLines.join('<br>');
+  outputEl.dataset.plainText = plainLines.join('\n');
+  document.getElementById('output-panel').classList.remove('hidden');
+  document.getElementById('output-panel').scrollIntoView({behavior:'smooth', block:'start'});
+});
+
+document.getElementById('btn-copy').addEventListener('click', async ()=>{
+  const outputEl = document.getElementById('output');
+  const htmlContent = outputEl.innerHTML;
+  const plainContent = outputEl.innerText;
+  try{
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        'text/html': new Blob([htmlContent], {type:'text/html'}),
+        'text/plain': new Blob([plainContent], {type:'text/plain'})
+      })
+    ]);
+  }catch(e){
+    try{ await navigator.clipboard.writeText(plainContent); }
+    catch(e2){
+      const range = document.createRange();
+      range.selectNodeContents(outputEl);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      document.execCommand('copy');
+    }
+  }
+  const msg = document.getElementById('copied-msg');
+  msg.classList.remove('hidden');
+  setTimeout(()=>msg.classList.add('hidden'), 2000);
+});
+
+</script>
+</body>
+</html>
