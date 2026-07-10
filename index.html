@@ -384,14 +384,21 @@ function addWorkerRow(){
   div.dataset.id = id;
   div.innerHTML = `
     <div class="worker-card-grid">
-      <input type="text" placeholder="Worker name" class="w-name">
+      <div>
+        <label style="margin-bottom:3px;">Worker's full legal name (not nickname)</label>
+        <input type="text" placeholder="e.g. Sione Taufa" class="w-name">
+      </div>
+      <div>
+        <label style="margin-bottom:3px;">Date of birth</label>
+        <input type="date" class="w-dob" title="Date of birth">
+      </div>
+    </div>
+    <div class="worker-card-grid2">
       <select class="w-program">
         <option value="">Program</option>
         <option value="Long-term">Long-term</option>
         <option value="Short-term">Short-term</option>
       </select>
-    </div>
-    <div class="worker-card-grid2">
       <select class="w-gender">
         <option value="">Gender</option>
         <option value="Male">Male</option>
@@ -400,12 +407,17 @@ function addWorkerRow(){
         <option value="Prefer not to say">Prefer not to say</option>
       </select>
       <input type="tel" placeholder="Phone number" class="w-phone">
-      <input type="date" placeholder="Date of birth" class="w-dob" title="Date of birth">
     </div>
     <div class="worker-card-actions">
       <button type="button" class="remove-worker">Remove worker</button>
     </div>
   `;
+  const existingCount = document.querySelectorAll('.worker-card').length;
+  if(existingCount > 0){
+    div.style.marginTop = '14px';
+    div.style.borderTop = '2px solid var(--border-strong)';
+    div.style.paddingTop = '14px';
+  }
   document.getElementById('worker-rows').appendChild(div);
   div.querySelector('.remove-worker').addEventListener('click', ()=>{
     if(document.querySelectorAll('.worker-card').length <= 1) return;
@@ -554,10 +566,11 @@ document.getElementById('btn-generate').addEventListener('click', ()=>{
 
   const workerHeader = multipleWorkers ? 'Workers involved:' : 'Worker:';
   plainLines.push(workerHeader); htmlLines.push(workerHeader);
-  workers.forEach(w=>{
-    const nameLine = `  -${w.name || '[worker name]'}${w.program ? ` (${w.program})` : ''}`;
+  workers.forEach((w,wi)=>{
+    if(wi>0){ plainLines.push(''); htmlLines.push(''); }
+    const nameLine = `  -${w.name || '[worker name]'} (${fmtDob(w.dob)})`;
     plainLines.push(nameLine); htmlLines.push(esc(nameLine));
-    plainLines.push(`  -DOB: ${fmtDob(w.dob)}`); htmlLines.push(esc(`  -DOB: ${fmtDob(w.dob)}`));
+    if(w.program){ plainLines.push(`  -Program: ${w.program}`); htmlLines.push(esc(`  -Program: ${w.program}`)); }
     if(w.gender){ plainLines.push(`  -Gender: ${w.gender}`); htmlLines.push(esc(`  -Gender: ${w.gender}`)); }
     if(w.phone){ plainLines.push(`  -Phone: ${w.phone}`); htmlLines.push(esc(`  -Phone: ${w.phone}`)); }
   });
@@ -572,17 +585,17 @@ document.getElementById('btn-generate').addEventListener('click', ()=>{
   htmlLines.push(`<span style="color:#c0392b;font-style:italic;">[${esc(deadline)}]</span>`);
   plainLines.push(''); htmlLines.push('');
 
-  plainLines.push('What happened:'); htmlLines.push('What happened:');
+  plainLines.push('What happened:'); htmlLines.push('<strong>What happened:</strong>');
   plainLines.push(narrative); htmlLines.push(esc(narrative));
   plainLines.push(''); htmlLines.push('');
 
   plainLines.push('Details below — answers needed for the PALMIS submission:');
-  htmlLines.push('Details below — answers needed for the PALMIS submission:');
+  htmlLines.push('<strong>Details below — answers needed for the PALMIS submission:</strong>');
   plainLines.push(''); htmlLines.push('');
 
   s.questions.forEach((q,i)=>{
     const typed = answerFields[i] ? answerFields[i].value.trim() : '';
-    plainLines.push(`${i+1}. ${q}`); htmlLines.push(esc(`${i+1}. ${q}`));
+    plainLines.push(`${i+1}. ${q}`); htmlLines.push(`<strong>${esc(`${i+1}. ${q}`)}</strong>`);
     plainLines.push(`   Answer: ${typed || '[not yet answered]'}`);
     htmlLines.push(esc(`   Answer: ${typed || '[not yet answered]'}`));
     plainLines.push(''); htmlLines.push('');
